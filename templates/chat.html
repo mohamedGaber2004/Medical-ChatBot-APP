@@ -90,17 +90,33 @@
     }
 
     async function sendMessageToBot(message) {
-        const response = await fetch("/get", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ msg: message })
-        });
+        try {
+            const response = await fetch("/get", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ msg: message })
+            });
 
-        const data = await response.json();
-        return data.answer;
+            if (!response.ok) {
+                throw new Error("Server error: " + response.status);
+            }
+
+            const data = await response.json();
+
+            if (!data.answer) {
+                throw new Error("Invalid JSON: missing 'answer'");
+            }
+
+            return data.answer;
+
+        } catch (err) {
+            console.error(err);
+            return "Error: could not get response — check the console.";
+        }
     }
+
 
 
     async function send(){
