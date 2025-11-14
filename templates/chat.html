@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chatbot — Simple HTML Template</title>
+  <link rel="stylesheet" href="static\style.css">
+</head>
+<body>
+  <div class="wrap" role="application" aria-label="Chatbot UI">
+    <header>
+      <div class="brand">
+        <div class="logo">CB</div>
+        <div>
+          <h1>Simple Chatbot</h1>
+          <p class="sub">Local demo (no backend required) — replace sendMessage() to integrate API</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="chat-card">
+      <section class="messages" id="messages" aria-live="polite">
+        <!-- messages injected here -->
+      </section>
+
+      <form id="composer" class="input-row" onsubmit="return false">
+        <input id="input" type="text" placeholder="Type your message and press Enter..." autocomplete="off" aria-label="Message input" />
+        <div class="controls">
+          <button id="sendBtn" class="btn" type="button">Send</button>
+          <button id="clearBtn" class="btn secondary" type="button">Clear</button>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    // Simple client-only chatbot template.
+    // How to integrate: replace sendMessageToBot(text) with an API call to your backend or third-party LLM.
+
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    // Small helper that appends a message row
+    function appendMessage({who='bot', text='...', time=new Date().toLocaleTimeString()}){
+      const wrapper = document.createElement('div');
+      wrapper.className = 'msg ' + (who === 'me' ? 'me' : '');
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.style.background = who === 'me' ? 'linear-gradient(135deg,var(--me),#0f1724)' : 'linear-gradient(135deg,var(--bot),#052733)';
+      avatar.textContent = who === 'me' ? 'You' : 'Bot';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = sanitize(text);
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = time;
+
+      const container = document.createElement('div');
+      container.appendChild(bubble);
+      container.appendChild(meta);
+
+      wrapper.appendChild(avatar);
+      wrapper.appendChild(container);
+
+      messagesEl.appendChild(wrapper);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    // Basic sanitizer to avoid injecting dangerous HTML
+    function sanitize(input){
+      const div = document.createElement('div');
+      div.textContent = input;
+      return div.innerHTML.replace(/\n/g, '<br>');
+    }
+
+    // Example bot: replies locally (echo + basic rules)
+    function localBotResponse(userText){
+      // Very small demo rule system. Replace with real API call.
+      const t = userText.trim().toLowerCase();
+      if(!t) return "Please type something — I can't read empty messages.";
+      if(t.includes('hello') || t.includes('hi')) return "Hello! How can I help you today?";
+      if(t.includes('help')) return "You can ask me about the demo, or replace the sendMessageToBot() function to connect your LLM/API.";
+      if(t.includes('time')) return `Current time is ${new Date().toLocaleTimeString()}`;
+      return "Echo: " + userText;
+    }
+
+    async function sendMessageToBot(message) {
+        const response = await fetch("/get", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ msg: message })
+        });
+
+        const data = await response.json();
+        return data.answer;
+    }
+
+
+    async function send(){
+      const text = inputEl.value.trim();
+      if(!text) return;
+      appendMessage({who:'me', text});
+      inputEl.value = '';
+
+      // show typing indicator
+      const typingEl = document.createElement('div');
+      typingEl.className = 'msg';
+      typingEl.innerHTML = `<div class="avatar" style="background:linear-gradient(135deg,var(--bot),#052733)">Bot</div><div><div class="bubble typing">Typing...</div></div>`;
+      messagesEl.appendChild(typingEl);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      try{
+        const reply = await sendMessageToBot(text);
+        messagesEl.removeChild(typingEl);
+        appendMessage({who:'bot', text:reply});
+      }catch(err){
+        messagesEl.removeChild(typingEl);
+        appendMessage({who:'bot', text:'Error: could not get response — check the console.'});
+        console.error(err);
+      }
+    }
+
+    // event bindings
+    sendBtn.addEventListener('click', send);
+    clearBtn.addEventListener('click', ()=>{messagesEl.innerHTML='';});
+    inputEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); send(); } });
+
+    // initial welcome
+    appendMessage({who:'bot', text:'Welcome! This is a simple chatbot template. Type a message to begin.'});
+  </script>
+</body>
+</html>
